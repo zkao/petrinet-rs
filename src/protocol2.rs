@@ -61,6 +61,9 @@ trait F3<T3, T2, T5> {
 trait F4<O, T4, T5> {
     type In: MFrom<(T4, T5)>;
     type Out: MInto<O>;
+    fn enabled(input: Option<&Self::In>, output: Option<&Self::Out>) -> bool {
+        input.is_some() && output.is_none()
+    }
 }
 
 fn main() {
@@ -81,24 +84,32 @@ fn main() {
     /// parameters do not matter for this implementation
     impl<T2, T3, T4, T5> F0<(), A0, A1> for State<A0, A1, T2, T3, T4, T5>
     where
-        T2: MFrom<A1>,
-        T5: MFrom<(T3, T2)>,
+        (): MInto<(A0, A1)>,
         (T3, T4): MFrom<A0>,
+        A1: MInto<T2>,
+        A0: MInto<(T3, T4)>,
+        T5: MFrom<(T3, T2)>,
+        (): MFrom<(T4, T5)>,
     {
         type In = ();
         type Out = (A0, A1);
     }
 
-    impl MFrom<()> for (A0, A1) {
+    impl<T0: Default, T1: Default> MFrom<()> for (T0, T1)
+    {
         fn mfrom(_: ()) -> Self {
-            dbg!(Default::default())
+            Default::default()
         }
     }
 
-    impl<T0, T3, T4, T5> F1<A1, A2> for State<T0, A1, A2, T3, T4, T5>
+    impl<T0: Default, T3, T4, T5> F1<A1, A2> for State<T0, A1, A2, T3, T4, T5>
     where
-        T5: MFrom<(T3, A2)>,
+        (): MInto<(T0, A1)>,
         (T3, T4): MFrom<T0>,
+        A1: MInto<A2>,
+        T0: MInto<(T3, T4)>,
+        T5: MFrom<(T3, A2)>,
+        (): MFrom<(T4, T5)>,
     {
         type In = A1;
         type Out = A2;
@@ -110,7 +121,15 @@ fn main() {
         }
     }
 
-    impl<T1, T2: MFrom<T1>, T5: MFrom<(A3, T2)>> F2<A0, A3, A4> for State<A0, T1, T2, A3, A4, T5> {
+    impl<T1: Default, T2, T5> F2<A0, A3, A4> for State<A0, T1, T2, A3, A4, T5>
+    where
+        (): MInto<(A0, T1)>,
+        (A3, A4): MFrom<A0>,
+        T1: MInto<T2>,
+        A0: MInto<(A3, A4)>,
+        T5: MFrom<(A3, T2)>,
+        (): MFrom<(A4, T5)>,
+    {
         type In = (A3, A4);
         type Out = A0;
     }
@@ -121,26 +140,33 @@ fn main() {
         }
     }
 
-    impl<T0, T1, T4> F3<A3, A2, A5> for State<T0, T1, A2, A3, T4, A5>
+    impl<T0: Default, T1: Default, T4> F3<A3, A2, A5> for State<T0, T1, A2, A3, T4, A5>
     where
+        (): MInto<(T0, T1)>,
+        (A3, T4): MFrom<T0>,
         T1: MInto<A2>,
         T0: MInto<(A3, T4)>,
+        A5: MFrom<(A3, A2)>,
+        (): MFrom<(T4, A5)>,
     {
         type In = (A3, A2);
         type Out = A5;
     }
 
-    impl MFrom<(A3, A2)> for A5 {
-        fn mfrom(_: (A3, A2)) -> A5 {
+    impl<T3, T2> MFrom<(T3, T2)> for A5 {
+        fn mfrom(_: (T3, T2)) -> A5 {
             dbg!(Default::default())
         }
     }
 
-    impl<T0, T2, T1, T3> F4<(), A4, A5> for State<T0, T1, T2, T3, A4, A5>
+    impl<T0: Default, T1: Default, T2, T3> F4<(), A4, A5> for State<T0, T1, T2, T3, A4, A5>
     where
-        T2: MFrom<T1>,
-        T0: MInto<(T3, A4)>,
-        (T3, T2): MInto<A5>,
+        (): MInto<(T0, T1)>,
+        (T3, A4): MFrom<T0>,
+        T1: MInto<T2>,
+        T0: MInto<(A3, A4)>,
+        (A3, A2): MInto<A5>,
+        (): MFrom<(A4, A5)>,
     {
         type In = (A4, A5);
         type Out = ();
@@ -153,22 +179,108 @@ fn main() {
     }
 
     #[derive(Default, Debug)]
-    struct State<T0, T1, T2, T3, T4, T5>(
-        Option<T0>,
-        Option<T1>,
-        Option<T2>,
-        Option<T3>,
-        Option<T4>,
-        Option<T5>,
-    )
+    struct State<T0, T1, T2, T3, T4, T5>
     where
-        T0: MInto<(T3, T4)>,
+        (T0, T1): MFrom<()>,
+        (T3, T4): MFrom<T0>,
         T1: MInto<T2>,
+        T0: MInto<(T3, T4)>,
         (T3, T2): MInto<T5>,
-        (T0, T1): MInto<(T0, T1)>,
-        (T4, T5): MFrom<(T4, T5)>;
+        (): MFrom<(T4, T5)>,
+    {
+        t0: Option<T0>,
+        t1: Option<T1>,
+        t2: Option<T2>,
+        t3: Option<T3>,
+        t4: Option<T4>,
+        t5: Option<T5>,
+    }
 
+    impl<T0, T1, T2, T3, T4, T5> State<T0, T1, T2, T3, T4, T5>
+    where
+        (T0, T1): MFrom<()>,
+        (T3, T4): MFrom<T0>,
+        T1: MInto<T2>,
+        T0: MInto<(T3, T4)>,
+        (T3, T2): MInto<T5>,
+        (): MFrom<(T4, T5)>,
+    {
+        fn enabled(&self) -> Vec<String> {
+            let mut fns: Vec<String> = Vec::new();
+
+            let input: Option<&()> = Some(&()); // always available
+            let output: Option<&(T0, T1)> = self.t0.zip(self.t1).as_ref();
+            if F0::enabled(input, output) {
+                fns.push("f0: () -> T0 T1".to_string());
+            }
+            if F1::enabled(self.t1.as_ref(), self.t2.as_ref()) {
+                fns.push("f1: T1 -> T2".to_string());
+            }
+
+            let input: Option<&T0> = self.t0.as_ref();
+            let output: Option<&(T3, T4)> = self.t3.zip(self.t4).as_ref();
+            if F2::enabled(input, output) {
+                fns.push("f2: T0 -> T3 T4".to_string());
+            }
+
+            let input: Option<&(T3, T2)> = self.t3.zip(self.t2).as_ref();
+            let output: Option<&T5> = self.t5.as_ref();
+            if F3::enabled(input, output) {
+                fns.push("f3: T3 T2 -> T5".to_string());
+            }
+            let input: Option<&(T5, T4)> = self.t5.zip(self.t4).as_ref();
+            let output: Option<&()> = None.as_ref();
+            if F4::enabled(input, output) {
+                fns.push("f4: T5 T4 -> () ".to_string());
+            }
+            dbg!(fns)
+        }
+        // // at the place that receives all the messages
+        // fn update(mut self, s: String) -> Self {
+        //     match s {
+        //         s if s.eq(&"EventM0Happened".to_string()) => {
+        //             self.0 = Some(A0);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM1Happened".to_string()) => {
+        //             self.1 = Some(A1);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM2Happened".to_string()) => {
+        //             self.2 = Some(A2);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM3Happened".to_string()) => {
+        //             self.3 = Some(A3);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM4Happened".to_string()) => {
+        //             self.4 = Some(A4);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM5Happened".to_string()) => {
+        //             self.5 = Some(A5);
+        //             self
+        //         }
+        //         s if s.eq(&"EventM6Happened".to_string()) => {
+        //             self.6 = Some(A6);
+        //             self
+        //         }
+        //         s => {
+        //             println!("Unsuppported event {}", s);
+        //             self
+        //         }
+        //     }
+        // }
+    }
     fn run() -> Option<()> {
+        // let d = State::init();
+        // // let d = d.update("EventM0Happened".to_string());
+        // // let mut d = d.update("EventM1Happened".to_string());
+        // d.enabled();
+        // let (a3, a4) = d.0?.fire();
+        // let a2: A2 = d.1?.fire();
+
         let d: State<A0, A1, A2, A3, A4, A5> = Default::default();
         dbg!(&d);
 
